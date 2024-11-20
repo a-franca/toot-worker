@@ -1,2 +1,2 @@
-name = "toot=worker"
+name = "toot-worker"
 main = "main.js"
