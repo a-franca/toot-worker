@@ -1,3 +1,13 @@
-name = "toot-worker"
+name = "Toot-Worker"
+description = "Toot-Worker: Post RSS feeds content to Mastodon."
+author = "Andre Franca <andre@abf.li>"
+license = "MIT OR Apache-2.0"
+homepage = "https://github.com/a-franca/toot-worker"
+repository = "https://github.com/a-franca/toot-worker.git"
 main = "main.js"
 compatibility_date = "2024-11-20"
+
+[observability.logs]
+enabled = true
+
+invocation_logs = false
