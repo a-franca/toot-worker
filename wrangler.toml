@@ -7,6 +7,10 @@ repository = "https://github.com/a-franca/toot-worker.git"
 main = "main.js"
 compatibility_date = "2024-11-20"
 
+kv_namespaces = [
+  { binding = "TOOTWORKER_KV", id = "c2a155bb63de4db79e5465af9e8bdf40" }
+]
+
 [observability.logs]
 enabled = true
 
