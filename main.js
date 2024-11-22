@@ -35,13 +35,16 @@ async function fetchAllPosts(rssFeedUrl) {
 
         // Map items to objects
         return items.map((item) => {
-            const description = extractElementValue(item, "description") || "";
+            const descriptionHtml = extractElementValue(item, "description") || "";
             const link = extractElementValue(item, "link") || "";
             const pubDate = extractElementValue(item, "pubDate") || "";
             const pubDateUTC = new Date(pubDate);
 
+            // Convert HTML to plain text
+            const description = convertHtmlToText(descriptionHtml);
+
             // Combine the plain-text description with the link to the original post
-            const fullDescription = `${description} <p>This post was first seen on <a href="${link}">${link}</a></p>`;
+            const fullDescription = `${description}\n\nThis post was first seen on ${link}`;
 
             return { description: fullDescription, link, pubDateUTC };
         });
