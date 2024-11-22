@@ -189,7 +189,22 @@ function decodeHtmlEntities(str) {
               .replace(/&gt;/g, ">")
               .replace(/&amp;/g, "&")
               .replace(/&quot;/g, "\"")
-              .replace(/&#39;/g, "'");
+              .replace(/&#39;/g, "'")
+              .replace(/&rsquo;/g, "’")  // Right single quotation mark
+              .replace(/&lsquo;/g, "‘")  // Left single quotation mark
+              .replace(/&ldquo;/g, "“")  // Left double quotation mark
+              .replace(/&rdquo;/g, "”")  // Right double quotation mark
+              .replace(/&mdash;/g, "—")  // Em dash
+              .replace(/&ndash;/g, "–")  // En dash
+              .replace(/&copy;/g, "©")   // Copyright symbol
+              .replace(/&reg;/g, "®")    // Registered trademark symbol
+              .replace(/&euro;/g, "€")   // Euro symbol
+              .replace(/&pound;/g, "£")  // Pound symbol
+              .replace(/&yen;/g, "¥")    // Yen symbol
+              .replace(/&times;/g, "×")  // Multiplication sign
+              .replace(/&divide;/g, "÷") // Division sign
+              .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))  // Decoded numeric character references
+              .replace(/&#x([a-fA-F0-9]+);/g, (match, hex) => String.fromCharCode(parseInt(hex, 16))); // Decoded hex character references
 }
 
 /**
