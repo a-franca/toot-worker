@@ -28,7 +28,8 @@ async function processLatestPosts(env) {
         console.log("Processing eligible posts...");
         await processPostsRecursively(posts, env);
 
-        console.log("All eligible posts have been processed.");
+        console.log("Done.");
+
     } catch (error) {
         console.error("Error processing RSS posts:", error);
     }
@@ -105,6 +106,7 @@ async function processPostsRecursively(posts, env) {
             console.error(`Error processing post`, error);
         }
     }
+    console.log("All eligible posts have been processed.");
 }
 
 // Publish content to Mastodon
@@ -233,5 +235,4 @@ addEventListener("scheduled", (event) => {
             TOOTWORKER_KV: TOOTWORKER_KV,
         })
     );
-    console.log("cron processed");
 });
