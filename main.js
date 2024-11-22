@@ -168,12 +168,28 @@ function extractElementValue(xml, tagName) {
  * @returns {string} - The plain text representation.
  */
 function convertHtmlToText(html) {
-    return html
+    // Decode HTML entities
+    const decodedHtml = decodeHtmlEntities(html);
+
+    return decodedHtml
         .replace(/<\/?(?:p|div|br)[^>]*>/g, "\n") // Replace block elements with newlines
         .replace(/<a[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/gi, "$2 ($1)") // Convert <a> to "text (URL)"
         .replace(/<img[^>]*alt="([^"]*)"[^>]*src="([^"]+)"[^>]*>/gi, "[$1] ($2)") // Convert <img> to "[alt] (URL)"
         .replace(/<[^>]+>/g, "") // Strip all other HTML tags
         .trim();
+}
+
+/**
+ * Decodes HTML entities in a string.
+ * @param {string} str - The input string with encoded HTML entities.
+ * @returns {string} - The decoded string.
+ */
+function decodeHtmlEntities(str) {
+    return str.replace(/&lt;/g, "<")
+              .replace(/&gt;/g, ">")
+              .replace(/&amp;/g, "&")
+              .replace(/&quot;/g, "\"")
+              .replace(/&#39;/g, "'");
 }
 
 /**
