@@ -247,13 +247,13 @@ addEventListener("fetch", (event) => {
  * Scheduled handler: Triggered by Cloudflare Cron.
  * Processes the RSS feed at the scheduled interval defined in Cloudflare settings.
  */
-addEventListener("scheduled", (event, env, ctx) => {
-    ctx.waitUntil(
+addEventListener("scheduled", (event, env) => {
+    event.waitUntil(
         processLatestPosts({
             RSS_FEED_URL: env.RSS_FEED_URL,
             MASTODON_INSTANCE: env.INSTANCE_URL,
             ACCESS_TOKEN: env.ACCESS_TOKEN,
-            TOOTWORKER_KV: env.TOOTWORKER_KV,
+            TOOTWORKER_KV: TOOTWORKER_KV,
         })
     );
     console.log("cron processed");
