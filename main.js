@@ -238,6 +238,10 @@ async function publishToMastodon(content, mastodonInstance, accessToken) {
             body: JSON.stringify({
                 status: content,
                 visibility: "public",
+                source: {
+                    name: "Toot-Worker",
+                    website: "https://github.com/a-franca/toot-worker"
+                }
             }),
         });
 
