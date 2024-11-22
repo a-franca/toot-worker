@@ -11,6 +11,8 @@
 
 const LAST_POST_KEY = "last_post"; // Key to track the last published post in KV storage
 
+import { XMLParser } from "fast-xml-parser";
+
 /**
  * Fetch RSS feed and parse all posts.
  * @param {string} rssFeedUrl - The URL of the RSS feed.
@@ -31,24 +33,26 @@ async function fetchAllPosts(rssFeedUrl) {
 
         // Parse the RSS feed response into text
         const rssText = await response.text();
-        const parser = new DOMParser();
 
-        // Parse the text as an XML document
-        const xmlDoc = parser.parseFromString(rssText, "application/xml");
+        // Parse XML using fast-xml-parser
+        const parser = new XMLParser({
+            ignoreAttributes: false, // Keep attributes if necessary for later use
+            attributeNamePrefix: "@_", // Optional: Prefix for attributes in parsed objects
+        });
+        const rssData = parser.parse(rssText);
 
-        // Extract all <item> elements (all posts in the feed)
-        const items = Array.from(xmlDoc.querySelectorAll("item"));
+        // Access the items in the feed (may vary depending on the RSS structure)
+        const items = rssData?.rss?.channel?.item || []; // Assuming standard RSS structure
 
-        // Map the <item> elements to objects containing parsed data
+        // Map the items to an array of post objects
         return items.map((item) => {
-            const descriptionHtml = item.querySelector("description")?.textContent ?? "";
-            const link = item.querySelector("link")?.textContent ?? "";
-            const pubDate = item.querySelector("pubDate")?.textContent ?? "";
+            const descriptionHtml = item.description || "";
+            const link = item.link || "";
+            const pubDate = item.pubDate || "";
             const pubDateUTC = new Date(pubDate);
 
-            // Parse the description HTML and convert it to plain text
-            const parsedHtml = new DOMParser().parseFromString(descriptionHtml, "text/html").body;
-            const description = convertHtmlToText(parsedHtml);
+            // Convert HTML to plain text
+            const description = convertHtmlToText(descriptionHtml);
 
             // Combine the plain-text description with the link to the original post
             const fullDescription = `${description}\n\nThis post was first seen on ${link}`;
@@ -142,38 +146,17 @@ function isValidUrl(url) {
 }
 
 /**
- * Converts HTML elements into plain text.
- * @param {HTMLElement} element - The root HTML element to convert.
- * @returns {string} - The plain text representation of the HTML content.
+ * Converts HTML string into plain text.
+ * @param {string} html - The HTML string to process.
+ * @returns {string} - The plain text representation.
  */
-function convertHtmlToText(element) {
-    let text = "";
-
-    element.childNodes.forEach((node) => {
-        if (node.nodeType === Node.TEXT_NODE) {
-            text += node.textContent;
-        } else if (node.nodeType === Node.ELEMENT_NODE) {
-            const tagName = node.tagName.toLowerCase();
-
-            if (tagName === "br") {
-                text += "\n";
-            } else if (["p", "div"].includes(tagName)) {
-                text += `${convertHtmlToText(node)}\n\n`;
-            } else if (tagName === "a" && node.hasAttribute("href")) {
-                const href = node.getAttribute("href");
-                const linkText = convertHtmlToText(node);
-                text += `${linkText} (${href})`;
-            } else if (tagName === "img" && node.hasAttribute("src")) {
-                const src = node.getAttribute("src");
-                const alt = node.getAttribute("alt") || "Image";
-                text += `[${alt}] (${src})`;
-            } else {
-                text += convertHtmlToText(node);
-            }
-        }
-    });
-
-    return text.trim();
+function convertHtmlToText(html) {
+    return html
+        .replace(/<\/?(?:p|div|br)[^>]*>/g, "\n") // Replace block elements with newlines
+        .replace(/<a[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/gi, "$2 ($1)") // Convert <a> to "text (URL)"
+        .replace(/<img[^>]*alt="([^"]*)"[^>]*src="([^"]+)"[^>]*>/gi, "[$1] ($2)") // Convert <img> to "[alt] (URL)"
+        .replace(/<[^>]+>/g, "") // Strip all other HTML tags
+        .trim();
 }
 
 /**
