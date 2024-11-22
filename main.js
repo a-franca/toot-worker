@@ -9,13 +9,32 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 
+// Constants
 const LAST_POST_KEY = "last_post"; // Key to track the last published post in KV storage
 
-/**
- * Fetch RSS feed and parse all posts.
- * @param {string} rssFeedUrl - The URL of the RSS feed.
- * @returns {Array} - An array of objects containing descriptions, links, and publication dates of all posts.
- */
+// Main logic: Process the latest RSS feed
+async function processLatestPosts(env) {
+    const { RSS_FEED_URL } = env;
+
+    try {
+        console.log("Fetching all posts from RSS feed...");
+        const posts = await fetchAllPosts(RSS_FEED_URL);
+
+        if (!posts.length) {
+            console.log("No posts available in the RSS feed.");
+            return;
+        }
+
+        console.log("Processing eligible posts...");
+        await processPostsRecursively(posts, env);
+
+        console.log("All eligible posts have been processed.");
+    } catch (error) {
+        console.error("Error processing RSS posts:", error);
+    }
+}
+
+// Fetch RSS Feed and Parse Posts
 async function fetchAllPosts(rssFeedUrl) {
     if (!isValidUrl(rssFeedUrl)) {
         throw new Error(`Invalid RSS feed URL: ${rssFeedUrl}`);
@@ -54,11 +73,7 @@ async function fetchAllPosts(rssFeedUrl) {
     }
 }
 
-/**
- * Recursively process all eligible posts and publish them to Mastodon.
- * @param {Array} posts - Array of all posts fetched from the RSS feed.
- * @param {Object} env - The environment variables for Mastodon and KV storage.
- */
+// Process Posts Recursively
 async function processPostsRecursively(posts, env) {
     const { TOOTWORKER_KV, MASTODON_INSTANCE, ACCESS_TOKEN } = env;
 
@@ -66,7 +81,7 @@ async function processPostsRecursively(posts, env) {
     const nowUTC = new Date();
     const thirtyMinutesAgoUTC = new Date(nowUTC - 30 * 60 * 1000);
 
-    for (const post of posts) { // Replace `recentPosts` with `posts`
+    for (const post of posts) {
         try {
             // Skip posts older than 30 minutes
             if (post.pubDateUTC < thirtyMinutesAgoUTC) {
@@ -94,154 +109,7 @@ async function processPostsRecursively(posts, env) {
     }
 }
 
-/**
- * Main logic for processing the latest RSS feed.
- * Recursively processes posts published in the last 24 hours.
- * @param {Object} env - The environment variables containing RSS URL, Mastodon instance, etc.
- */
-async function processLatestPosts(env) {
-    const { RSS_FEED_URL } = env;
-
-    try {
-        console.log("Fetching all posts from RSS feed...");
-        const posts = await fetchAllPosts(RSS_FEED_URL);
-
-        if (!posts.length) {
-            console.log("No posts available in the RSS feed.");
-            return;
-        }
-
-        console.log("Processing eligible posts...");
-        await processPostsRecursively(posts, env);
-
-        console.log("All eligible posts have been processed.");
-    } catch (error) {
-        console.error("Error processing RSS posts:", error);
-    }
-}
-
-/**
- * Validates the format of a URL.
- * @param {string} url - The URL to validate.
- * @returns {boolean} - True if the URL is valid, false otherwise.
- */
-function isValidUrl(url) {
-    try {
-        new URL(url);
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-/**
- * Extracts multiple occurrences of an XML element.
- * @param {string} xml - The XML string to parse.
- * @param {string} tagName - The tag name to extract (e.g., "item").
- * @returns {Array} - Array of strings containing the raw XML for each occurrence of the element.
- */
-function extractElements(xml, tagName) {
-    const regex = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, "gi");
-    const matches = [];
-    let match;
-    while ((match = regex.exec(xml)) !== null) {
-        matches.push(match[1]);
-    }
-    return matches;
-}
-
-/**
- * Extracts the value of the first occurrence of an XML element within a string.
- * @param {string} xml - The XML string to search.
- * @param {string} tagName - The tag name to extract (e.g., "description").
- * @returns {string|null} - The value of the element or null if not found.
- */
-function extractElementValue(xml, tagName) {
-    const regex = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, "i");
-    const match = xml.match(regex);
-    return match ? match[1].trim() : null;
-}
-
-/**
- * Converts HTML string into plain text.
- * @param {string} html - The HTML string to process.
- * @returns {string} - The plain text representation.
- */
-function convertHtmlToText(html) {
-    // Decode HTML entities
-    const decodedHtml = decodeHtmlEntities(html);
-
-    return decodedHtml
-        .replace(/<\/?(?:p|div|br)[^>]*>/g, "\n") // Replace block elements with newlines
-        .replace(/<a[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/gi, "$2 ($1)") // Convert <a> to "text (URL)"
-        .replace(/<img[^>]*alt="([^"]*)"[^>]*src="([^"]+)"[^>]*>/gi, "[$1] ($2)") // Convert <img> to "[alt] (URL)"
-        .replace(/<[^>]+>/g, "") // Strip all other HTML tags
-        .trim();
-}
-
-/**
- * Decodes HTML entities in a string.
- * @param {string} str - The input string with encoded HTML entities.
- * @returns {string} - The decoded string.
- */
-function decodeHtmlEntities(str) {
-    return str.replace(/&lt;/g, "<")
-              .replace(/&gt;/g, ">")
-              .replace(/&amp;/g, "&")
-              .replace(/&quot;/g, "\"")
-              .replace(/&#39;/g, "'")
-              .replace(/&rsquo;/g, "’")  // Right single quotation mark
-              .replace(/&lsquo;/g, "‘")  // Left single quotation mark
-              .replace(/&ldquo;/g, "“")  // Left double quotation mark
-              .replace(/&rdquo;/g, "”")  // Right double quotation mark
-              .replace(/&mdash;/g, "—")  // Em dash
-              .replace(/&ndash;/g, "–")  // En dash
-              .replace(/&copy;/g, "©")   // Copyright symbol
-              .replace(/&reg;/g, "®")    // Registered trademark symbol
-              .replace(/&euro;/g, "€")   // Euro symbol
-              .replace(/&pound;/g, "£")  // Pound symbol
-              .replace(/&yen;/g, "¥")    // Yen symbol
-              .replace(/&times;/g, "×")  // Multiplication sign
-              .replace(/&divide;/g, "÷") // Division sign
-              .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))  // Decoded numeric character references
-              .replace(/&#x([a-fA-F0-9]+);/g, (match, hex) => String.fromCharCode(parseInt(hex, 16))); // Decoded hex character references
-}
-
-/**
- * Check if a post has already been published.
- * @param {string} link - The link of the current post.
- * @param {Object} kvNamespace - The KV namespace to check the last published post.
- * @returns {boolean} - True if the post has already been published, false otherwise.
- */
-async function isPostAlreadyPublished(link, kvNamespace) {
-    try {
-        const lastPublishedLink = await kvNamespace.get(LAST_POST_KEY);
-        return lastPublishedLink === link;
-    } catch (error) {
-        console.error("Error checking if post has already been published:", error);
-        return false;
-    }
-}
-
-/**
- * Save the link of the latest published post.
- * @param {string} link - The link of the latest post.
- * @param {Object} kvNamespace - The KV namespace to save the link.
- */
-async function savePublishedPost(link, kvNamespace) {
-    try {
-        await kvNamespace.put(LAST_POST_KEY, link);
-    } catch (error) {
-        console.error("Error saving the published post link:", error);
-    }
-}
-
-/**
- * Publish content to Mastodon.
- * @param {string} content - The content to publish.
- * @param {string} mastodonInstance - The Mastodon instance URL.
- * @param {string} accessToken - The access token for the Mastodon API.
- */
+// Publish content to Mastodon
 async function publishToMastodon(content, mastodonInstance, accessToken) {
     try {
         const response = await fetch(`${mastodonInstance}/api/v1/statuses`, {
@@ -271,17 +139,94 @@ async function publishToMastodon(content, mastodonInstance, accessToken) {
     }
 }
 
-/**
- * HTTP handler: Responds with "Working" for all HTTP requests.
- */
-addEventListener("fetch", (event) => {
-    event.respondWith(new Response("Working", { headers: { "Content-Type": "text/plain" } }));
-});
+// Utility Functions
 
-/**
- * Scheduled handler: Triggered by Cloudflare Cron.
- * Processes the RSS feed at the scheduled interval defined in Cloudflare settings.
- */
+//Check if a post has already been published.
+async function isPostAlreadyPublished(link, kvNamespace) {
+    try {
+        const lastPublishedLink = await kvNamespace.get(LAST_POST_KEY);
+        return lastPublishedLink === link;
+    } catch (error) {
+        console.error("Error checking if post has already been published:", error);
+        return false;
+    }
+}
+
+// Save the link of the latest published post to avoid duplicates.
+async function savePublishedPost(link, kvNamespace) {
+    try {
+        await kvNamespace.put(LAST_POST_KEY, link);
+    } catch (error) {
+        console.error("Error saving the published post link:", error);
+    }
+}
+
+// Validates the format of a URL.
+function isValidUrl(url) {
+    try {
+        new URL(url);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+// Extracts multiple occurrences of an XML element.
+function extractElements(xml, tagName) {
+    const regex = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, "gi");
+    const matches = [];
+    let match;
+    while ((match = regex.exec(xml)) !== null) {
+        matches.push(match[1]);
+    }
+    return matches;
+}
+
+// Extracts the value of the first occurrence of an XML element within a string.
+function extractElementValue(xml, tagName) {
+    const regex = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, "i");
+    const match = xml.match(regex);
+    return match ? match[1].trim() : null;
+}
+
+// HTML Conversion into plaintext
+function convertHtmlToText(html) {
+    // Decode HTML entities
+    const decodedHtml = decodeHtmlEntities(html);
+
+    return decodedHtml
+        .replace(/<\/?(?:p|div|br)[^>]*>/g, "\n") // Replace block elements with newlines
+        .replace(/<a[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/gi, "$2 ($1)") // Convert <a> to "text (URL)"
+        .replace(/<img[^>]*alt="([^"]*)"[^>]*src="([^"]+)"[^>]*>/gi, "[$1] ($2)") // Convert <img> to "[alt] (URL)"
+        .replace(/<[^>]+>/g, "") // Strip all other HTML tags
+        .trim();
+}
+
+// Decodes HTML entities in a string.
+function decodeHtmlEntities(str) {
+    return str.replace(/&lt;/g, "<")
+              .replace(/&gt;/g, ">")
+              .replace(/&amp;/g, "&")
+              .replace(/&quot;/g, "\"")
+              .replace(/&#39;/g, "'")
+              .replace(/&rsquo;/g, "’")  
+              .replace(/&lsquo;/g, "‘") 
+              .replace(/&ldquo;/g, "“") 
+              .replace(/&rdquo;/g, "”")  
+              .replace(/&mdash;/g, "—")  
+              .replace(/&ndash;/g, "–")  
+              .replace(/&copy;/g, "©") 
+              .replace(/&reg;/g, "®") 
+              .replace(/&euro;/g, "€")  
+              .replace(/&pound;/g, "£")  
+              .replace(/&yen;/g, "¥")
+              .replace(/&times;/g, "×")
+              .replace(/&divide;/g, "÷")
+              .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))  // Decoded numeric character references
+              .replace(/&#x([a-fA-F0-9]+);/g, (match, hex) => String.fromCharCode(parseInt(hex, 16))); // Decoded hex character references
+}
+
+//Cron Event Handlers
 addEventListener("scheduled", (event) => {
     event.waitUntil(
         processLatestPosts({
