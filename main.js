@@ -11,44 +11,33 @@
 
 const LAST_POST_KEY = "last_post"; // Key to track the last published post in KV storage
 
-import { XMLParser } from "fast-xml-parser";
-
 /**
  * Fetch RSS feed and parse all posts.
  * @param {string} rssFeedUrl - The URL of the RSS feed.
  * @returns {Array} - An array of objects containing descriptions, links, and publication dates of all posts.
  */
 async function fetchAllPosts(rssFeedUrl) {
-    // Validate RSS feed URL format
     if (!isValidUrl(rssFeedUrl)) {
         throw new Error(`Invalid RSS feed URL: ${rssFeedUrl}`);
     }
 
     try {
-        // Fetch the RSS feed from the provided URL
         const response = await fetch(rssFeedUrl);
         if (!response.ok) {
             throw new Error(`Failed to fetch RSS feed: ${response.statusText}`);
         }
 
-        // Parse the RSS feed response into text
+        // Get the RSS feed as text
         const rssText = await response.text();
 
-        // Parse XML using fast-xml-parser
-        const parser = new XMLParser({
-            ignoreAttributes: false, // Keep attributes if necessary for later use
-            attributeNamePrefix: "@_", // Optional: Prefix for attributes in parsed objects
-        });
-        const rssData = parser.parse(rssText);
+        // Parse the text manually using string manipulation
+        const items = extractElements(rssText, "item");
 
-        // Access the items in the feed (may vary depending on the RSS structure)
-        const items = rssData?.rss?.channel?.item || []; // Assuming standard RSS structure
-
-        // Map the items to an array of post objects
+        // Map items to objects
         return items.map((item) => {
-            const descriptionHtml = item.description || "";
-            const link = item.link || "";
-            const pubDate = item.pubDate || "";
+            const descriptionHtml = extractElementValue(item, "description") || "";
+            const link = extractElementValue(item, "link") || "";
+            const pubDate = extractElementValue(item, "pubDate") || "";
             const pubDateUTC = new Date(pubDate);
 
             // Convert HTML to plain text
@@ -143,6 +132,34 @@ function isValidUrl(url) {
     } catch {
         return false;
     }
+}
+
+/**
+ * Extracts multiple occurrences of an XML element.
+ * @param {string} xml - The XML string to parse.
+ * @param {string} tagName - The tag name to extract (e.g., "item").
+ * @returns {Array} - Array of strings containing the raw XML for each occurrence of the element.
+ */
+function extractElements(xml, tagName) {
+    const regex = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, "gi");
+    const matches = [];
+    let match;
+    while ((match = regex.exec(xml)) !== null) {
+        matches.push(match[1]);
+    }
+    return matches;
+}
+
+/**
+ * Extracts the value of the first occurrence of an XML element within a string.
+ * @param {string} xml - The XML string to search.
+ * @param {string} tagName - The tag name to extract (e.g., "description").
+ * @returns {string|null} - The value of the element or null if not found.
+ */
+function extractElementValue(xml, tagName) {
+    const regex = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, "i");
+    const match = xml.match(regex);
+    return match ? match[1].trim() : null;
 }
 
 /**
