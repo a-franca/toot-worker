@@ -85,13 +85,11 @@ async function processPostsRecursively(posts, env) {
         try {
             // Skip posts older than 30 minutes
             if (post.pubDateUTC < thirtyMinutesAgoUTC) {
-                console.log(`Skipping post older than 30 minutes: ${post.link}`);
                 continue;
             }
             
             // Skip posts that have already been published
             if (await isPostAlreadyPublished(post.link, TOOTWORKER_KV)) {
-                console.log(`Post already published: ${post.link}`);
                 continue;
             }
 
@@ -101,10 +99,10 @@ async function processPostsRecursively(posts, env) {
 
             // Mark the post as published
             await savePublishedPost(post.link, TOOTWORKER_KV);
+            console.log(`Post published and saved successfully`);
 
-            console.log(`Post published and saved successfully: ${post.link}`);
         } catch (error) {
-            console.error(`Error processing post: ${post.link}`, error);
+            console.error(`Error processing post`, error);
         }
     }
 }
@@ -133,7 +131,6 @@ async function publishToMastodon(content, mastodonInstance, accessToken) {
             throw new Error(`Mastodon API Error: ${errorText}`);
         }
 
-        console.log("Post published successfully to Mastodon.");
     } catch (error) {
         console.error("Error publishing to Mastodon:", error);
     }
