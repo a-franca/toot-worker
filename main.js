@@ -25,10 +25,10 @@ async function processLatestPosts(env) {
             return;
         }
 
-        console.log("Processing eligible posts...");
+        console.log("Checking for eligible posts...");
         await processPostsRecursively(posts, env);
 
-        console.log("Done.");
+        console.log("Done!");
 
     } catch (error) {
         console.error("Error processing RSS posts:", error);
@@ -64,7 +64,7 @@ async function fetchAllPosts(rssFeedUrl) {
             const description = convertHtmlToText(descriptionHtml);
 
             // Combine the plain-text description with the link to the original post
-            const fullDescription = `${description}\n\nThis post was first seen on ${link}`;
+            const fullDescription = `${description}\n\n${link}`;
 
             return { description: fullDescription, link, pubDateUTC };
         });
@@ -106,7 +106,6 @@ async function processPostsRecursively(posts, env) {
             console.error(`Error processing post`, error);
         }
     }
-    console.log("All eligible posts have been processed.");
 }
 
 // Publish content to Mastodon
