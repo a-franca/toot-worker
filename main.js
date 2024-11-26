@@ -5,6 +5,8 @@
  * License: MIT or APACHE-2.0
  * Description: This Cloudflare Worker fetches the latest post from an RSS feed and publishes it to Mastodon.
  * 
+ * Repository: https://github.com/a-franca/toot-worker
+ * 
  * This code runs on Cloudflare Workers. 
  * Learn more at https://developers.cloudflare.com/workers/
  */
